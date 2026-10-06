@@ -1,0 +1,24 @@
+# --- dati KITTI: mai nel repo ---
+data/_archives/
+data/kitti/training/
+data/kitti/testing/
+
+# --- modelli / pesi ---
+*.pth
+*.pt
+*.onnx
+*.pkl
+
+# --- artefatti generati ---
+outputs/figures/*.png
+outputs/figures/*.pdf
+outputs/results/*.csv
+outputs/results/*.txt
+*.npy
+
+# --- ambiente ---
+.venv/
+__pycache__/
+*.py[cod]
+.DS_Store
+.ipynb_checkpoints/
