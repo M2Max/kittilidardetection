@@ -3,6 +3,15 @@ data/_archives/
 data/kitti/training/
 data/kitti/testing/
 
+# --- duplicati del devkit originale (la versione corretta è in devkit/) ---
+data/kitti/cpp/
+data/kitti/mapping/
+data/kitti/matlab/
+data/kitti/readme.txt
+
+# --- artefatti di build C++ ---
+devkit/build/
+
 # --- modelli / pesi ---
 *.pth
 *.pt
