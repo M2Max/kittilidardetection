@@ -47,24 +47,24 @@ pts = load_velodyne(100)[:, :3]
 n, d, inlier = fit_ground(pts)
 griglia = build_grid(pts[~inlier])
 
-# --- diagnostica grezza: cosa fa label PRIMA del filtro ---
-etichette, n_grezze = scipy.ndimage.label(griglia, structure=np.ones((3, 3), dtype=int))
-size = np.bincount(etichette.ravel())   # size[i] = celle della componente i
+# # --- diagnostica grezza: cosa fa label PRIMA del filtro ---
+# etichette, n_grezze = scipy.ndimage.label(griglia, structure=np.ones((3, 3), dtype=int))
+# size = np.bincount(etichette.ravel())   # size[i] = celle della componente i
 
-print(f"componenti grezze (8-connessita) : {n_grezze}")
-print(f"  di 1 cella                     : {(size[1:] == 1).sum()}")
-print(f"  di 2-4 celle                   : {((size[1:] >= 2) & (size[1:] <= 4)).sum()}")
-print(f"  di 5+ celle                    : {(size[1:] >= 5).sum()}")
+# print(f"componenti grezze (8-connessita) : {n_grezze}")
+# print(f"  di 1 cella                     : {(size[1:] == 1).sum()}")
+# print(f"  di 2-4 celle                   : {((size[1:] >= 2) & (size[1:] <= 4)).sum()}")
+# print(f"  di 5+ celle                    : {(size[1:] >= 5).sum()}")
 
-top = np.argsort(size)[::-1][:10]
-print("le 10 piu' grandi:")
-for i in top:
-    if i > 0:
-        print(f"  etichetta {i:>3}: {size[i]:>4} celle")
+# top = np.argsort(size)[::-1][:10]
+# print("le 10 piu' grandi:")
+# for i in top:
+#     if i > 0:
+#         print(f"  etichetta {i:>3}: {size[i]:>4} celle")
 
-# --- quello che usa la pipeline ---
-cluster = find_clusters(griglia)
-print(f"cluster tenuti (min_points=5)    : {len(cluster)}")
+# # --- quello che usa la pipeline ---
+# cluster = find_clusters(griglia)
+# print(f"cluster tenuti (min_points=5)    : {len(cluster)}")
 
 # # --- plot: binario a sinistra, componenti colorate a destra ---
 # fig, ax = plt.subplots(1, 2, figsize=(20, 8))
