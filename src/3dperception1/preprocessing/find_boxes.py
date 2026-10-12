@@ -2,17 +2,17 @@
 
 Per ogni maschera di cluster (uscita di find_clusters) costruisco un Box3D:
     A. selezione dei punti originali del cluster (maschera + indici di cella)
-    B. convex hull della proiezione (x, y)
-    C. rettangolo di area minima (provo la direzione di ogni spigolo del convesso)
-    D. statistiche di z -> bottom-center e altezza
+    B. rettangolo di area minima della proiezione (x, y) con cv2.minAreaRect
+       (convesso e rotating calipers calcolati internamente da OpenCV)
+    C. statistiche di z -> bottom-center e altezza
 
 Convenzioni (README): bottom-center, (l, w, h) in metri, yaw in radianti
 (0 = asse lungo allineato a +x LiDAR). label lo riempie lo step 5.
 """
 
 from pathlib import Path
+import cv2
 import numpy as np
-from scipy.spatial import ConvexHull, QhullError
 from collections import namedtuple
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
@@ -46,51 +46,31 @@ def indici_cella(punti, n_r=120, n_theta=1000, r_max=64):
 def _rettangolo_min_area(xy):
     """Rettangolo di area minima che contiene i punti 2D (K, 2).
 
-    Fatto geometrico: il rettangolo di area minima di un poligono convesso
-    ha almeno un lato allineato a uno spigolo del poligono. Quindi basta
-    provare la direzione di ogni spigolo del convesso (non serve il rotating
-    calipers completo).
+    Implementazione di produzione: cv2.minAreaRect gira il rotating calipers
+    sul convesso (il convesso lo calcola lui internamente, quindi passo i
+    punti grezzi).
+
+    NON uso l'angolo che minAreaRect restituisce: la sua convenzione è
+    cambiata tra versioni di OpenCV (intervallo e lato a cui si riferisce).
+    Per non dipendere dalla versione ricavo tutto dai 4 vertici con
+    cv2.boxPoints.
 
     Ritorna (cx, cy, l, w, yaw) o None se i punti sono degeneri
     (< 3 punti o tutti allineati: non esiste un'area).
     """
     if len(xy) < 3:
         return None
-    try:
-        hull = ConvexHull(xy)
-    except QhullError:
-        return None
-
-    H = xy[hull.vertices]                          # (V, 2): vertici del convesso
-
-    # Per ogni spigolo: direzione unitaria U e perpendicolare V
-    e = np.roll(H, -1, axis=0) - H                 # vettore di ogni spigolo
-    U = e / np.linalg.norm(e, axis=1, keepdims=True)
-    V = np.stack([-U[:, 1], U[:, 0]], axis=1)
-
-    # Proiezioni di TUTTI i vertici su OGNI direzione.
-    # Attenzione alla forma: U @ H.T -> (n_spigoli, n_vertici): riga = spigolo.
-    pu = U @ H.T                                   # coordinate lungo u
-    pv = V @ H.T                                   # coordinate lungo v
-    eu = pu.max(axis=1) - pu.min(axis=1)           # estensione lungo u
-    ev = pv.max(axis=1) - pv.min(axis=1)           # estensione lungo v
-
-    k = int(np.argmin(eu * ev))                    # spigolo che minimizza l'area
-
-    # Centro: punto medio degli intervalli di proiezione, rimappato in x,y
-    cu = (pu[k].max() + pu[k].min()) / 2
-    cv = (pv[k].max() + pv[k].min()) / 2
-    cx = cu * U[k, 0] + cv * V[k, 0]
-    cy = cu * U[k, 1] + cv * V[k, 1]
-
-    # L'asse lungo potrebbe stare su u oppure su v: yaw = direzione dell'asse lungo
-    if eu[k] >= ev[k]:
-        l, w = eu[k], ev[k]
-        yaw = np.arctan2(U[k, 1], U[k, 0])
+    rect = cv2.minAreaRect(np.ascontiguousarray(xy, dtype=np.float32))
+    vertici = cv2.boxPoints(rect)                  # (4, 2): i 4 angoli del rettangolo
+    e0 = vertici[1] - vertici[0]; l0 = np.linalg.norm(e0)
+    e1 = vertici[2] - vertici[1]; l1 = np.linalg.norm(e1)
+    if l0 >= l1:                                    # asse lungo sullo spigolo 0 o sull'1
+        l, w, yaw = l0, l1, np.arctan2(e0[1], e0[0])
     else:
-        l, w = ev[k], eu[k]
-        yaw = np.arctan2(V[k, 1], V[k, 0])
-
+        l, w, yaw = l1, l0, np.arctan2(e1[1], e1[0])
+    if min(l, w) < 1e-4:                           # tutti i punti allineati: no area
+        return None
+    cx, cy = rect[0]
     return float(cx), float(cy), float(l), float(w), float(yaw)
 
 
