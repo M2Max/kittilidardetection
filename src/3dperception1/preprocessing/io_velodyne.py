@@ -21,9 +21,41 @@ def load_calib(frame_id):
     }
         
             
-# def load_labels(frame_id):
+def load_labels(frame_id):
+    """label_2/XXXXXX.txt -> lista di dict.
 
-# def lidar_to_rect(pts, calib):
+    15 colonne: type, truncated, occluded, alpha, bbox2d(4), h w l, x y z, rotation_y.
+    Alcuni file hanno una 16a colonna (score): la ignoro.
+    Le coordinate x y z sono bottom-center nel frame camera rettificato.
+    Tengo TUTTE le righe, DontCare comprese (in valutazione servono: sono le
+    zone dove un falso positivo non va penalizzato).
+    """
+    labelPath = Path(__file__).parents[3] / f"data/kitti/training/label_2/{frame_id:06d}.txt"
+    labels = []
+    with open(labelPath) as f:
+        for line in f:
+            v = line.split()
+            if len(v) < 15:
+                continue
+            labels.append({
+                "type": v[0],
+                "truncated": float(v[1]),    # in KITTI e' float (0..1)
+                "occluded": int(v[2]),      # 0..3
+                "alpha": float(v[3]),
+                "h": float(v[8]), "w": float(v[9]), "l": float(v[10]),
+                "x": float(v[11]), "y": float(v[12]), "z": float(v[13]),
+                "rotation_y": float(v[14]),
+            })
+    return labels
+
+def lidar_to_rect(pts, calib):
+    """Inverso di rect_to_lidar: punti LiDAR -> camera rettificata (convenzione riga).
+    Serva per il filtro FOV nella valutazione (step 6)."""
+    R0_rect = calib["R0_rect"]
+    Tr_velo_to_cam = calib["Tr_velo_to_cam"]
+    rotation = Tr_velo_to_cam[:, :3]
+    traslation = Tr_velo_to_cam[:, 3]
+    return (pts @ rotation.T + traslation) @ R0_rect.T
 
 def rect_to_lidar(pts, calib):
     R0_rect = calib["R0_rect"]
