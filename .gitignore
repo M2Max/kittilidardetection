@@ -31,3 +31,5 @@ __pycache__/
 *.py[cod]
 .DS_Store
 .ipynb_checkpoints/
+presentation/sensor_view_clip.mp4
+results/sensor_view.mp4
